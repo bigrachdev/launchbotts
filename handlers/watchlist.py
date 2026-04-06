@@ -8,17 +8,34 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from datetime import datetime
+import asyncio
 import database
 from keyboards import (
     get_main_menu_keyboard,
     get_watchlist_keyboard,
     get_watchlist_actions_keyboard,
-    get_coin_type_keyboard
+    get_coin_type_keyboard,
+    get_meme_coins_keyboard
 )
 from utils.data_fetcher import get_crypto_data, format_large_number, get_price_change_emoji
 from utils.dex_fetcher import get_dex_data, detect_rug_pull_signals
 
 router = Router()
+
+
+async def _fetch_crypto_data(symbol: str):
+    """Run blocking data fetch off the event loop."""
+    return await asyncio.to_thread(get_crypto_data, symbol)
+
+
+async def _fetch_dex_data(symbol: str):
+    """Run blocking DEX fetch off the event loop."""
+    return await asyncio.to_thread(get_dex_data, symbol)
+
+
+async def _detect_rug_pull(dex_data: dict):
+    """Run blocking risk check off the event loop."""
+    return await asyncio.to_thread(detect_rug_pull_signals, dex_data)
 
 
 # ============== FSM STATES ==============
@@ -160,13 +177,13 @@ async def process_coin_type(callback: CallbackQuery, state: FSMContext):
     try:
         if is_meme:
             # Try DexScreener for meme coins
-            dex_data = get_dex_data(ticker)
+            dex_data = await _fetch_dex_data(ticker)
             if dex_data:
                 current_price = dex_data.get('price_usd', 0)
         
         # Fallback to CoinGecko
         if current_price == 0:
-            crypto_data = get_crypto_data(ticker)
+            crypto_data = await _fetch_crypto_data(ticker)
             if crypto_data:
                 current_price = crypto_data.get('price', 0)
     except Exception as e:
@@ -242,7 +259,7 @@ async def view_coin_details(callback: CallbackQuery):
     
     try:
         # Try CoinGecko first
-        data = get_crypto_data(ticker)
+        data = await _fetch_crypto_data(ticker)
         
         if data:
             price = data.get('price', 0)
@@ -260,7 +277,7 @@ async def view_coin_details(callback: CallbackQuery):
         
         # If meme coin, get DexScreener data
         if is_meme:
-            dex_data = get_dex_data(ticker)
+            dex_data = await _fetch_dex_data(ticker)
             if dex_data:
                 msg += "DEX Data:\n"
                 msg += f"• Liquidity: ${dex_data.get('liquidity_usd', 0):,.0f}\n"
@@ -268,7 +285,7 @@ async def view_coin_details(callback: CallbackQuery):
                 msg += f"• Chain: {dex_data.get('chain', 'Unknown')}\n\n"
                 
                 # Rug pull check
-                rug_check = detect_rug_pull_signals(dex_data)
+                rug_check = await _detect_rug_pull(dex_data)
                 msg += f"Safety Check:\n{rug_check['risk_level']}\n"
                 if rug_check['signals']:
                     msg += "Signals:\n"
@@ -372,11 +389,11 @@ async def refresh_watchlist(callback: CallbackQuery):
     for coin in watchlist:
         ticker = coin['ticker']
         try:
-            data = get_crypto_data(ticker)
+            data = await _fetch_crypto_data(ticker)
             if data and data.get('price', 0) > 0:
                 # Could store updated price in watchlist if needed
                 updated_count += 1
-        except:
+        except Exception:
             continue
     
     await callback.answer(
@@ -405,4 +422,35 @@ async def back_to_menu(callback: CallbackQuery):
         "🏠 Main Menu",
         reply_markup=get_main_menu_keyboard()
     )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "browse_meme_coins")
+async def browse_meme_coins(callback: CallbackQuery):
+    """Handle browse meme coins action from empty watchlist."""
+    await callback.message.edit_text(
+        "🔥 Meme Coin Tracker\n\nChoose an option below:",
+        reply_markup=get_meme_coins_keyboard(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "back_to_watchlist")
+async def back_to_watchlist(callback: CallbackQuery):
+    """Return user to watchlist view."""
+    watchlist = await database.get_watchlist(callback.from_user.id)
+    if not watchlist:
+        await callback.message.edit_text(
+            "📋 Your Watchlist\n\nYour watchlist is empty.",
+            reply_markup=get_watchlist_keyboard(watchlist),
+            parse_mode="Markdown"
+        )
+    else:
+        tickers = [c['ticker'] for c in watchlist]
+        await callback.message.edit_text(
+            f"📋 Your Watchlist ({len(watchlist)} coins)",
+            reply_markup=get_watchlist_actions_keyboard(tickers),
+            parse_mode="Markdown"
+        )
     await callback.answer()

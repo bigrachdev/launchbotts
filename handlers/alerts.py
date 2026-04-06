@@ -16,6 +16,11 @@ from config import ALERT_INTERVAL_HOURS, ALERT_RISK_THRESHOLD
 logger = logging.getLogger(__name__)
 
 
+async def _fetch_crypto_data(symbol: str):
+    """Run blocking data fetch off the event loop."""
+    return await asyncio.to_thread(get_crypto_data, symbol)
+
+
 async def analyze_watchlist_for_user(bot: Bot, user_id: int):
     """Analyze user's watchlist and send alerts for high-score assets"""
     try:
@@ -32,7 +37,7 @@ async def analyze_watchlist_for_user(bot: Bot, user_id: int):
             
             try:
                 # Fetch and analyze crypto
-                data = get_crypto_data(ticker)
+                data = await _fetch_crypto_data(ticker)
                 if data:
                     score, risk_level, factors = score_crypto(data)
                     
@@ -125,7 +130,7 @@ async def send_trending_alert(bot: Bot):
         
         # Analyze trending cryptos
         for symbol in trending_crypto:
-            data = get_crypto_data(symbol)
+            data = await _fetch_crypto_data(symbol)
             if data:
                 score, risk_level, factors = score_crypto(data)
                 if score >= ALERT_RISK_THRESHOLD:

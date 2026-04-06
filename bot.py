@@ -15,6 +15,7 @@ import database
 # Import handlers
 from handlers import (
     start, 
+    menu,
     watchlist,  # NEW - Main feature now
     intelligence, 
     portfolio, 
@@ -48,11 +49,13 @@ async def main():
     
     # Register routers in order (IMPORTANT: Order matters!)
     dp.include_router(start.router)          # Welcome screen
+    dp.include_router(menu.router)           # Meme menu / settings
     dp.include_router(watchlist.router)      # Main watchlist feature
     dp.include_router(intelligence.router)   # AI analysis
     dp.include_router(portfolio.router)      # Simple portfolio
     dp.include_router(analytics.router)      # Charts & stats
     dp.include_router(launch_alerts.router)  # Event tracking
+    dp.include_router(donations.router)      # Donations
     
     logger.info("🚀 Starting LaunchBot - FREE Crypto & Meme Coin Analyzer")
     logger.info("=" * 60)

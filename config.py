@@ -11,6 +11,8 @@ if not BOT_TOKEN:
 
 # Database Configuration
 DB_PATH = os.getenv('DB_PATH', 'launchbot.db')
+DATABASE_URL = os.getenv('DATABASE_URL')
+DB_TYPE = os.getenv('DB_TYPE', 'sqlite')
 
 # Alert Configuration
 ALERT_INTERVAL_HOURS = int(os.getenv('ALERT_INTERVAL_HOURS', '2'))

@@ -21,10 +21,23 @@ router = Router()
 
 
 # ============== ANALYTICS MAIN ==============
+@router.message(F.text.contains("Analytics"))
+async def analytics_main_message(message: Message):
+    """Display analytics menu from main keyboard."""
+    await message.answer(
+        "Portfolio Analytics\n\n"
+        "Choose what you'd like to analyze:\n\n"
+        "Performance - Overall trading performance\n"
+        "Composition - Portfolio breakdown\n"
+        "P/L Chart - Profit/Loss over time\n"
+        "Win Rate - Success rate analysis",
+        reply_markup=get_analytics_keyboard(),
+        parse_mode="Markdown"
+    )
+
 @router.callback_query(F.data == "view_analytics")
 async def analytics_main(callback: CallbackQuery):
     """Display analytics menu"""
-    user_id = callback.from_user.id
     
     await callback.message.edit_text(
         "📊 Portfolio Analytics\n\n"

@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     status TEXT NOT NULL DEFAULT 'active',
     language TEXT DEFAULT 'en',
     alerts_enabled INTEGER DEFAULT 0,
+    last_weekly_report TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

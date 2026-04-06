@@ -62,6 +62,9 @@ async def init_db():
                                          'TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
             
             await conn.execute(schema_pg)
+            await conn.execute(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_weekly_report TIMESTAMP"
+            )
             logger.info("✅ PostgreSQL database initialized")
         finally:
             await release_connection(conn)
@@ -70,6 +73,12 @@ async def init_db():
         conn = await get_connection()
         try:
             await conn.executescript(schema)
+            try:
+                await conn.execute(
+                    "ALTER TABLE users ADD COLUMN last_weekly_report TIMESTAMP"
+                )
+            except Exception:
+                pass
             await conn.commit()
             logger.info("✅ SQLite database initialized")
         finally:
@@ -271,7 +280,7 @@ async def get_all_active_users() -> List[int]:
     try:
         if DB_TYPE == 'postgresql':
             rows = await conn.fetch(
-                "SELECT telegram_id FROM users WHERE alerts_enabled = true"
+                "SELECT telegram_id FROM users WHERE alerts_enabled = 1"
             )
             return [row['telegram_id'] for row in rows]
         else:
@@ -629,3 +638,62 @@ async def get_portfolio_snapshot(user_id: int) -> Dict:
         'total_pnl': pnl['profit_loss'],
         'total_pnl_pct': pnl['profit_loss_pct']
     }
+
+
+# ============== REPORT SUPPORT FUNCTIONS ==============
+
+async def get_last_report_date(user_id: int) -> Optional[str]:
+    """Get last weekly report date for user."""
+    conn = await get_connection()
+    try:
+        if DB_TYPE == 'postgresql':
+            row = await conn.fetchrow(
+                "SELECT last_weekly_report FROM users WHERE telegram_id = $1",
+                user_id
+            )
+            if not row:
+                return None
+            value = row['last_weekly_report']
+            return value.isoformat() if value else None
+        else:
+            conn.row_factory = aiosqlite.Row
+            async with conn.execute(
+                "SELECT last_weekly_report FROM users WHERE telegram_id = ?",
+                (user_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
+                if not row:
+                    return None
+                value = row['last_weekly_report']
+                return value if value else None
+    except Exception:
+        return None
+    finally:
+        await release_connection(conn)
+
+
+async def mark_weekly_report_sent(user_id: int):
+    """Mark weekly report as sent for user."""
+    conn = await get_connection()
+    try:
+        if DB_TYPE == 'postgresql':
+            await conn.execute(
+                "UPDATE users SET last_weekly_report = $1 WHERE telegram_id = $2",
+                datetime.now(), user_id
+            )
+        else:
+            await conn.execute(
+                "UPDATE users SET last_weekly_report = ? WHERE telegram_id = ?",
+                (datetime.now(), user_id)
+            )
+            await conn.commit()
+    finally:
+        await release_connection(conn)
+
+
+async def track_price_changes(user_id: int) -> List[Dict]:
+    """
+    Placeholder price-drop tracker for report subsystem.
+    Returns empty list when no actionable changes are available.
+    """
+    return []

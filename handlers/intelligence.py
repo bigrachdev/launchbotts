@@ -8,6 +8,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from datetime import datetime
+import asyncio
 import database
 from keyboards import get_intelligence_keyboard, get_alerts_toggle_keyboard, get_main_menu_keyboard
 from utils.data_fetcher import get_crypto_data, format_large_number, get_price_change_emoji
@@ -15,6 +16,16 @@ from utils.dex_fetcher import get_dex_data, detect_rug_pull_signals, format_dex_
 from utils.ai_model import score_crypto, get_recommendation
 
 router = Router()
+
+
+async def _fetch_crypto_data(symbol: str):
+    """Run blocking data fetch off the event loop."""
+    return await asyncio.to_thread(get_crypto_data, symbol)
+
+
+async def _fetch_dex_data(symbol: str):
+    """Run blocking DEX fetch off the event loop."""
+    return await asyncio.to_thread(get_dex_data, symbol)
 
 
 # Define states for analysis flow
@@ -80,7 +91,7 @@ async def process_crypto_analysis(message: Message, state: FSMContext):
     processing_msg = await message.answer("🔄 Analyzing... Please wait.")
     
     # Fetch data from CoinGecko
-    data = get_crypto_data(symbol)
+    data = await _fetch_crypto_data(symbol)
     
     if not data:
         await processing_msg.edit_text(
@@ -168,10 +179,10 @@ async def process_meme_coin_analysis(message: Message, state: FSMContext):
     processing_msg = await message.answer("🔄 Analyzing meme coin... Checking for rug pulls...")
     
     # Try DexScreener first (better for meme coins)
-    dex_data = get_dex_data(symbol)
+    dex_data = await _fetch_dex_data(symbol)
     
     # Also get CoinGecko data
-    cg_data = get_crypto_data(symbol)
+    cg_data = await _fetch_crypto_data(symbol)
     
     if not dex_data and not cg_data:
         await processing_msg.edit_text(
@@ -339,6 +350,24 @@ async def toggle_alerts_menu(callback: CallbackQuery):
         parse_mode="Markdown"
     )
     await callback.answer()
+
+
+@router.callback_query(F.data == "alert_frequency")
+async def alert_frequency_placeholder(callback: CallbackQuery):
+    """Temporary handler for alert frequency settings button."""
+    await callback.answer("Alert frequency customization is coming soon.", show_alert=True)
+
+
+@router.callback_query(F.data == "change_min_score")
+async def change_min_score_placeholder(callback: CallbackQuery):
+    """Temporary handler for min score settings button."""
+    await callback.answer("Minimum score customization is coming soon.", show_alert=True)
+
+
+@router.callback_query(F.data == "notification_times")
+async def notification_times_placeholder(callback: CallbackQuery):
+    """Temporary handler for notification time settings button."""
+    await callback.answer("Notification schedule customization is coming soon.", show_alert=True)
 
 
 @router.callback_query(F.data == "enable_alerts")

@@ -8,11 +8,17 @@ from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from datetime import datetime
+import asyncio
 import database
 from keyboards import get_portfolio_keyboard, get_main_menu_keyboard
 from utils.data_fetcher import get_crypto_data, format_large_number
 
 router = Router()
+
+
+async def _fetch_crypto_data(symbol: str):
+    """Run blocking data fetch off the event loop."""
+    return await asyncio.to_thread(get_crypto_data, symbol)
 
 # Define states for trade entry
 class TradeStates(StatesGroup):
@@ -339,12 +345,12 @@ async def refresh_portfolio_prices(callback: CallbackQuery):
         
         try:
             # All assets are crypto
-            data = get_crypto_data(asset)
+            data = await _fetch_crypto_data(asset)
             if data:
                 current_price = data.get('price', position['entry_price'])
                 await database.update_portfolio_price(user_id, asset, current_price)
                 updated += 1
-        except Exception as e:
+        except Exception:
             continue
     
     if updated > 0:

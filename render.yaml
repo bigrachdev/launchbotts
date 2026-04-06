@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: launchbot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: DB_PATH
+        value: launchbot.db
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_TYPE
+        value: sqlite
+      - key: ALERT_INTERVAL_HOURS
+        value: 2
+      - key: ALERT_RISK_THRESHOLD
+        value: 70
+      - key: PORTFOLIO_UPDATE_INTERVAL_MINUTES
+        value: 30
+      - key: HUGGINGFACE_API_KEY
+        sync: false
+      - key: HUGGINGFACE_MODEL
+        value: meta-llama/Llama-2-7b-chat-hf
+      - key: USE_LOCAL_MODEL
+        value: "true"
+      - key: AI_CONFIDENCE_THRESHOLD
+        value: 0.75
+      - key: AI_ENSEMBLE_MODELS
+        value: 3
+      - key: AI_TEMPERATURE
+        value: 0.3
+      - key: TWITTER_BEARER_TOKEN
+        sync: false
+      - key: LAUNCH_ALERT_DAYS_BEFORE
+        value: 3
+      - key: LAUNCH_CHECK_INTERVAL_HOURS
+        value: 12
+      - key: WEEKLY_REPORT_DAY
+        value: 0
+      - key: WEEKLY_REPORT_HOUR
+        value: 9
+      - key: PRICE_DROP_ALERT_THRESHOLD
+        value: -10.0

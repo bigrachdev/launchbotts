@@ -4,22 +4,34 @@ Monitors upcoming crypto launches, upgrades, and major events.
 """
 
 import aiosqlite
-import asyncpg
 import logging
 import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
-import requests
-from config import DB_PATH, DATABASE_URL
+from config import DB_PATH
 
 logger = logging.getLogger(__name__)
 
 # Detect database type
 DB_TYPE = os.getenv('DB_TYPE', 'sqlite')
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+if DB_TYPE == 'postgresql':
+    import asyncpg
 
 
 class EventTracker:
     """Track and manage upcoming crypto launch events"""
+
+    @staticmethod
+    def _next_annual_date(month: int, day: int) -> str:
+        """Return next occurrence of month/day as YYYY-MM-DD."""
+        now = datetime.now()
+        year = now.year
+        candidate = datetime(year, month, day)
+        if candidate.date() <= now.date():
+            candidate = datetime(year + 1, month, day)
+        return candidate.strftime('%Y-%m-%d')
     
     async def fetch_crypto_events(self, symbol: str) -> List[Dict]:
         """
@@ -37,19 +49,19 @@ class EventTracker:
             # Method 1: Check hardcoded major events (for demo)
             major_events = {
                 'BTC': [
-                    {'type': 'halving', 'date': '2024-04-20', 'desc': 'Bitcoin Halving Event'},
+                    {'type': 'halving', 'date': self._next_annual_date(4, 20), 'desc': 'Bitcoin Halving Watch Window'},
                 ],
                 'ETH': [
-                    {'type': 'upgrade', 'date': '2024-03-15', 'desc': 'Ethereum Dencun Upgrade'},
+                    {'type': 'upgrade', 'date': self._next_annual_date(3, 15), 'desc': 'Ethereum Major Upgrade Watch Window'},
                 ],
                 'SOL': [
-                    {'type': 'conference', 'date': '2024-09-20', 'desc': 'Solana Breakpoint 2024'},
+                    {'type': 'conference', 'date': self._next_annual_date(9, 20), 'desc': 'Solana Breakpoint Watch Window'},
                 ],
                 'ADA': [
-                    {'type': 'upgrade', 'date': '2024-06-15', 'desc': 'Cardano Chang Hard Fork'},
+                    {'type': 'upgrade', 'date': self._next_annual_date(6, 15), 'desc': 'Cardano Upgrade Watch Window'},
                 ],
                 'MATIC': [
-                    {'type': 'upgrade', 'date': '2024-05-10', 'desc': 'Polygon zkEVM Update'},
+                    {'type': 'upgrade', 'date': self._next_annual_date(5, 10), 'desc': 'Polygon Upgrade Watch Window'},
                 ]
             }
             

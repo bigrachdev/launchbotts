@@ -20,6 +20,11 @@ router = Router()
 logger = logging.getLogger(__name__)
 
 
+async def _fetch_crypto_data(symbol: str):
+    """Run blocking data fetch off the event loop."""
+    return await asyncio.to_thread(get_crypto_data, symbol)
+
+
 async def prepare_launch_data(event: dict) -> dict:
     """
     Gather all data needed for crypto launch analysis.
@@ -41,7 +46,7 @@ async def prepare_launch_data(event: dict) -> dict:
     
     try:
         # Get market data
-        crypto_data = get_crypto_data(asset)
+        crypto_data = await _fetch_crypto_data(asset)
         if crypto_data:
             data.update({
                 'market_cap': crypto_data.get('marketCap', 0),
